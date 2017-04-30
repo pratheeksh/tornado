@@ -20,6 +20,7 @@ import functools
 import re
 import socket
 import sys
+import time
 from io import BytesIO
 
 
@@ -101,6 +102,8 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
         self.max_buffer_size = max_buffer_size
         self.max_header_size = max_header_size
         self.max_body_size = max_body_size
+        self.start_time = io_loop.time()
+
         # TCPClient could create a Resolver for us, but we have to do it
         # ourselves to support hostname_mapping.
         if resolver:
@@ -121,11 +124,12 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
         self.tcp_client.close()
 
     def fetch_impl(self, request, callback):
+
         key = object()
         self.queue.append((key, request, callback))
         if not len(self.active) < self.max_clients:
             timeout_handle = self.io_loop.add_timeout(
-                self.io_loop.time() + min(request.connect_timeout,
+                self.start_time + min(request.connect_timeout,
                                           request.request_timeout),
                 functools.partial(self._on_timeout, key, "in request queue"))
         else:
